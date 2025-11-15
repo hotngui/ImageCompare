@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Slider gradient -->
+    <linearGradient id="sliderGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e0e0e0;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Comparison slider in center -->
+  <g transform="translate(512, 220)" filter="url(#shadow)">
+    <!-- Slider line -->
+    <rect x="-4" y="0" width="8" height="420" fill="url(#sliderGradient)" rx="4"/>
+    
+    <!-- Slider handle circle -->
+    <circle cx="0" cy="210" r="45" fill="white" opacity="0.95"/>
+    <circle cx="0" cy="210" r="40" fill="url(#sliderGradient)"/>
+    
+    <!-- Left/Right arrows in handle -->
+    <g transform="translate(0, 210)">
+      <!-- Left arrow -->
+      <path d="M -20 0 L -10 -8 L -10 8 Z" fill="#667eea"/>
+      <!-- Right arrow -->
+      <path d="M 20 0 L 10 -8 L 10 8 Z" fill="#764ba2"/>
+    </g>
+    
+    <!-- Small indicators at top and bottom -->
+    <circle cx="0" cy="40" r="8" fill="white" opacity="0.8"/>
+    <circle cx="0" cy="380" r="8" fill="white" opacity="0.8"/>
+  </g>
+</svg>
