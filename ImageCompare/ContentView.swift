@@ -175,7 +175,6 @@ struct ContentView: View {
     }
     
     private func compareImages(_ image1: CIImage, _ image2: CIImage, backgroundColor: Color) -> (image: NSImage?, areIdentical: Bool) {
-        // Compare two images using difference blend mode
         let ciContext = CIContext()
         let filter = CIFilter(name: "CIDifferenceBlendMode")
         
@@ -183,39 +182,55 @@ struct ContentView: View {
         filter?.setValue(image1, forKey: kCIInputImageKey)
         filter?.setValue(image2, forKey: kCIInputBackgroundImageKey)
         
-        let (isIdentical, totalPixels, diffPixels) = areImagesIdentical(image1, image2)
+        let (isIdentical, _, _) = areImagesIdentical(image1, image2)
         var diffImage: NSImage? = nil
         
-        if let outputImage = filter?.outputImage {
-            // Create a background with the specified color
-            let extent = outputImage.extent
-            let nsColor = NSColor(backgroundColor)
-            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
-            nsColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-            let ciColor = CIColor(red: red, green: green, blue: blue, alpha: alpha)
-            let colorBackground = CIImage(color: ciColor).cropped(to: extent)
-            
-            // Invert the difference image to create a mask (white where identical, black where different)
-            let invertFilter = CIFilter(name: "CIColorInvert")
-            invertFilter?.setValue(outputImage, forKey: kCIInputImageKey)
-            
-            if let invertedImage = invertFilter?.outputImage {
-                // Use the inverted difference as a mask to show background color where pixels are identical
-                let maskFilter = CIFilter(name: "CIBlendWithMask")
-                maskFilter?.setValue(colorBackground, forKey: kCIInputImageKey)
-                maskFilter?.setValue(outputImage, forKey: kCIInputBackgroundImageKey)
-                maskFilter?.setValue(invertedImage, forKey: kCIInputMaskImageKey)
-                
-                if let finalImage = maskFilter?.outputImage,
-                   let cgImage = ciContext.createCGImage(finalImage, from: extent) {
-                    diffImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-                }
-            }
+        guard let outputImage = filter?.outputImage else {
+            return (nil, isIdentical)
+        }
+        
+        let extent = outputImage.extent
+        
+        // Amplify the differences so subtle changes are visible
+        let exposureFilter = CIFilter(name: "CIExposureAdjust")
+        exposureFilter?.setValue(outputImage, forKey: kCIInputImageKey)
+        exposureFilter?.setValue(4.0, forKey: kCIInputEVKey)
+        
+        guard let amplifiedDiff = exposureFilter?.outputImage else {
+            return (nil, isIdentical)
+        }
+        
+        // Create background color
+        let nsColor = NSColor(backgroundColor)
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        nsColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        let ciColor = CIColor(red: red, green: green, blue: blue, alpha: alpha)
+        let colorBackground = CIImage(color: ciColor).cropped(to: extent)
+        
+        // Convert the amplified difference to grayscale to use as a mask
+        // This gives us luminance: bright where different, dark where identical
+        let grayscaleFilter = CIFilter(name: "CIPhotoEffectMono")
+        grayscaleFilter?.setValue(amplifiedDiff, forKey: kCIInputImageKey)
+        
+        guard let grayscaleMask = grayscaleFilter?.outputImage else {
+            return (nil, isIdentical)
+        }
+        
+        // Use CIBlendWithMask:
+        // - Where mask is WHITE (different pixels) → show amplifiedDiff (inputImage)
+        // - Where mask is BLACK (identical pixels) → show colorBackground (backgroundImage)
+        let blendFilter = CIFilter(name: "CIBlendWithMask")
+        blendFilter?.setValue(amplifiedDiff, forKey: kCIInputImageKey)
+        blendFilter?.setValue(colorBackground, forKey: kCIInputBackgroundImageKey)
+        blendFilter?.setValue(grayscaleMask, forKey: kCIInputMaskImageKey)
+        
+        if let finalImage = blendFilter?.outputImage,
+           let cgImage = ciContext.createCGImage(finalImage, from: extent) {
+            diffImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
         }
         
         return (diffImage, isIdentical)
     }
-    
     private func areImagesIdentical(_ image1: CIImage, _ image2: CIImage) -> (Bool, Int, Int) {
         let ciContext = CIContext()
         

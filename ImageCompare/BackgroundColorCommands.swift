@@ -50,6 +50,7 @@ struct ColorPickerView: View {
                 Spacer()
                 
                 Button("Done") {
+                    NSColorPanel.shared.close()
                     NSApplication.shared.keyWindow?.close()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -57,5 +58,8 @@ struct ColorPickerView: View {
         }
         .padding(20)
         .frame(width: 300)
+        .onDisappear {
+            NSColorPanel.shared.close()
+        }
     }
 }
